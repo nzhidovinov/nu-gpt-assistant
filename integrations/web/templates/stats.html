@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+
+{% block styles %}
+<style>
+    body, html {
+      height: 100%;
+    }
+
+    .stats-box {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .stats-list {
+      padding-left: 0;
+    }
+
+    .stats {
+      margin-bottom: 15px;
+      list-style: none;
+    }
+
+    .stats-text {
+      padding: 10px;
+      border-radius: 5px;
+    }
+
+    .stats-container {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+<div class="stats-container">
+  <div class="card flex-grow-1">
+    <div class="card-header bg-dark text-white">Статистика</div>
+    <div class="card-body stats-box">
+      <ul class="list-unstyled stats-list"></ul>
+    </div>
+</div>
+
+<script>
+    window.addEventListener("load", function() {
+        const statsList = document.querySelector('.stats-list');
+
+        function addStatsElement() {
+            let date = new Date();
+            let minutes = date.getMinutes()
+            if (minutes < 10) {
+                minutes = '0' + minutes
+            }
+            fetch('http://localhost:5000/api/calls_count')
+            .then(response => response.json())
+            .then(data => {
+                const statsItem = document.createElement('li');
+                statsItem.classList.add('stats');
+                statsItem.innerHTML = `
+                    <div class="stats-text">
+                        <div>
+                            <b>${date.getHours()}:${minutes}:</b>
+                            ${data.calls_count}
+                        </div>
+                    </div>`;
+                statsList.appendChild(statsItem);
+                // console.log("Added element");
+            })
+            fetch('http://localhost:5000/api/reset_calls_count')
+        }
+
+        function callEveryMinute() {
+            addStatsElement();
+            setInterval(addStatsElement, 1000 * 60);
+        }
+
+        function callEveryHour() {
+            addStatsElement();
+            setInterval(addStatsElement, 1000 * 60 * 60);
+        }
+
+        var nextDate = new Date();
+        if (nextDate.getMinutes() == 0) {
+            callEveryHour()
+            // callEveryMinute()
+        } else {
+            // nextDate.setMinutes(nextDate.getMinutes() + 1);
+            nextDate.setHours(nextDate.getHours() + 1);
+            nextDate.setMinutes(0);
+            nextDate.setSeconds(0);
+
+            let difference = nextDate - new Date();
+            console.log('Set daley  %ds', difference / 1000);
+            setTimeout(
+                callEveryHour,
+                // callEveryMinute,
+                difference
+            );
+        }
+
+    });
+</script>
+
+{% endblock %}
