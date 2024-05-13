@@ -1,7 +1,8 @@
 import asyncio
-from fastapi import FastAPI
 from functools import wraps
+from fastapi import FastAPI
 from assistant.data_model import Item
+from fastapi.middleware.cors import CORSMiddleware
 from assistant.chain import load_prompts, create_assistant
 
 
@@ -24,10 +25,21 @@ class Counter:
             return func(*args, **kwargs)
         return inner
 
+    def reset(self):
+        self.count = 0
+
 
 api = FastAPI()
 count_calls = Counter()
 assistant = create_assistant()
+
+
+api.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @api.get("/")
@@ -52,3 +64,9 @@ def get_answer(question: Item):
 @api.get("/api/calls_count")
 def get_api_calls_count():
     return {'calls_count': count_calls.count}
+
+
+@api.get("/api/reset_calls_count")
+def reset_calls_count():
+    count_calls.reset()
+    return {'text': 'API calls counter restarted'}
