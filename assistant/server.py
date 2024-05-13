@@ -3,7 +3,7 @@ from functools import wraps
 from fastapi import FastAPI
 from assistant.data_model import Item
 from fastapi.middleware.cors import CORSMiddleware
-from assistant.chain import load_prompts, create_assistant
+from assistant.chain import load_prompts, create_assistant, prepare_chat_history
 
 
 class Counter:
@@ -56,8 +56,9 @@ def prompts():
 
 @api.post("/api/get_answer")
 @count_calls
-def get_answer(question: Item):
-    answer = assistant.invoke(question.text)
+def get_answer(question: Item, chat_history: list[str]):
+    chat_history = prepare_chat_history(chat_history)
+    answer = assistant.invoke({"question": question.text, "chat_history": chat_history})
     return {"message": answer}
 
 

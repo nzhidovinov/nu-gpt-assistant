@@ -1,4 +1,5 @@
 from pathlib import Path
+from itertools import batched
 from operator import itemgetter
 from dotenv import find_dotenv, load_dotenv
 
@@ -8,9 +9,11 @@ from langchain_openai.embeddings import OpenAIEmbeddings
 
 from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
+from langchain.prompts import MessagesPlaceholder
 from langchain.prompts import SystemMessagePromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
+from langchain.schema import SystemMessage, HumanMessage, AIMessage
 
 
 load_dotenv(find_dotenv())
@@ -40,6 +43,15 @@ def load_prompts():
     return prompts
 
 
+def prepare_chat_history(chat_history: list[str]):
+    chain_chat_history = []
+    for question, answer in batched(chat_history, 2):
+        chain_chat_history.extend(
+            [HumanMessage(content=question), AIMessage(content=answer)]
+        )
+    return chain_chat_history
+
+
 def create_assistant(db_path: Path = Path('db')):
     # Load db
     db = load_db(db_path)
@@ -52,6 +64,7 @@ def create_assistant(db_path: Path = Path('db')):
     prompts = load_prompts()
     prompt = ChatPromptTemplate.from_messages([
         SystemMessagePromptTemplate.from_template(prompts['system']),
+        MessagesPlaceholder(variable_name="chat_history"),
         ChatPromptTemplate.from_template(prompts['instruction'])
     ])
 
@@ -61,10 +74,9 @@ def create_assistant(db_path: Path = Path('db')):
         temperature=0
     )
     chain = (
-        {
-            "question": RunnablePassthrough(),
-            "context": itemgetter('question') | retriever | format_docs
-        }
+        RunnablePassthrough().assign(
+            context=itemgetter('question') | retriever | format_docs
+        )
         | prompt
         | model
         | StrOutputParser()
